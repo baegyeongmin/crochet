@@ -35,6 +35,7 @@ export default async function LoginPage({
           type="email"
           placeholder="이메일"
           required
+          autoComplete="off"
           className="border rounded px-3 py-2"
         />
         <input
@@ -42,6 +43,7 @@ export default async function LoginPage({
           type="password"
           placeholder="비밀번호"
           required
+          autoComplete="off"
           className="border rounded px-3 py-2"
         />
         {error && (

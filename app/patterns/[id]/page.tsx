@@ -34,6 +34,14 @@ export default async function PatternDetailPage({
         ← 목록으로
       </Link>
       <h1 className="text-2xl font-bold mt-2 mb-4">{pattern.title}</h1>
+      {pattern.image && (
+        // eslint-disable-next-line @next/next/no-img-element -- base64 데이터 URL이라 next/image 최적화 대상이 아님
+        <img
+          src={pattern.image}
+          alt={pattern.title}
+          className="max-w-full rounded border mb-4"
+        />
+      )}
       <pre className="whitespace-pre-wrap border rounded px-4 py-3 bg-gray-50 text-sm">
         {pattern.content}
       </pre>

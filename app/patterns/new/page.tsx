@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
 export default async function NewPatternPage({
   searchParams,
 }: {
@@ -17,14 +19,36 @@ export default async function NewPatternPage({
     const title = String(formData.get("title") ?? "").trim();
     const content = String(formData.get("content") ?? "").trim();
     if (!title || !content) {
-      redirect("/patterns/new?error=1");
+      redirect("/patterns/new?error=missing");
+    }
+
+    let image: string | null = null;
+    const imageFile = formData.get("image");
+    if (imageFile instanceof File && imageFile.size > 0) {
+      if (!imageFile.type.startsWith("image/")) {
+        redirect("/patterns/new?error=image-type");
+      }
+      if (imageFile.size > MAX_IMAGE_BYTES) {
+        redirect("/patterns/new?error=image-size");
+      }
+      const buffer = Buffer.from(await imageFile.arrayBuffer());
+      image = `data:${imageFile.type};base64,${buffer.toString("base64")}`;
     }
 
     const pattern = await prisma.pattern.create({
-      data: { title, content, userId: session.user.id },
+      data: { title, content, image, userId: session.user.id },
     });
     redirect(`/patterns/${pattern.id}`);
   }
+
+  const errorMessage =
+    error === "image-type"
+      ? "이미지 파일만 업로드할 수 있어요."
+      : error === "image-size"
+        ? "이미지는 5MB 이하만 업로드할 수 있어요."
+        : error === "missing"
+          ? "제목과 내용을 모두 입력해주세요."
+          : null;
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-10">
@@ -36,6 +60,15 @@ export default async function NewPatternPage({
           required
           className="border rounded px-3 py-2"
         />
+        <label className="flex flex-col gap-1">
+          <span className="text-sm text-gray-500">이미지 (선택)</span>
+          <input
+            type="file"
+            name="image"
+            accept="image/*"
+            className="border rounded px-3 py-2 text-sm"
+          />
+        </label>
         <textarea
           name="content"
           placeholder="도안 내용 (예: 1단: 사슬 6, 짧은뜨기 5...)"
@@ -43,9 +76,7 @@ export default async function NewPatternPage({
           rows={12}
           className="border rounded px-3 py-2 font-mono text-sm"
         />
-        {error && (
-          <p className="text-red-600 text-sm">제목과 내용을 모두 입력해주세요.</p>
-        )}
+        {errorMessage && <p className="text-red-600 text-sm">{errorMessage}</p>}
         <button
           type="submit"
           className="bg-black text-white rounded px-3 py-2 self-start"

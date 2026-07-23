@@ -32,6 +32,7 @@ export default async function SignupPage({
           type="email"
           placeholder="이메일"
           required
+          autoComplete="off"
           className="border rounded px-3 py-2"
         />
         <input
@@ -40,6 +41,7 @@ export default async function SignupPage({
           placeholder="비밀번호 (8자 이상)"
           required
           minLength={8}
+          autoComplete="off"
           className="border rounded px-3 py-2"
         />
         {error && <p className="text-red-600 text-sm">{error}</p>}
