@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test \"lib/**/*.test.ts\"",
+    "chart:sample": ".venv\\Scripts\\python.exe scripts/make_sample_chart.py",
+    "verify": "node scripts/verify-local.mjs && node scripts/verify-page.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
