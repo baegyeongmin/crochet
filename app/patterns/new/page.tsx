@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { isPolishConfigured } from "@/lib/polish";
 import { ChartParseField } from "./ChartParseField";
 
 // next.config.ts 의 serverActions.bodySizeLimit 보다 작아야 한다. 크게 잡으면
@@ -63,7 +64,7 @@ export default async function NewPatternPage({
           required
           className="border rounded px-3 py-2"
         />
-        <ChartParseField />
+        <ChartParseField polishAvailable={isPolishConfigured()} />
         {errorMessage && <p className="text-red-600 text-sm">{errorMessage}</p>}
         <button
           type="submit"

@@ -16,18 +16,34 @@ type ParseResponse = {
 type Status = "idle" | "loading" | "done" | "error";
 
 /**
- * 도안 이미지 업로드 + 자동 분석 + 결과 편집.
+ * 도안 이미지 업로드 → 자동 인식 → AI 문장 다듬기 → 편집.
  *
- * 이미지 input 과 content textarea 를 한 덩어리로 들고 있다. 분석 결과를
+ * 이미지 input 과 content textarea 를 한 덩어리로 들고 있다. 인식/다듬기 결과를
  * textarea 에 채워 넣어야 해서 클라이언트 상태가 필요하다. 폼 자체는 상위
- * 서버 액션이 그대로 처리하므로 name 속성(image/content)은 유지한다.
+ * 서버 액션이 처리하므로 name 속성(image/content)은 유지한다.
  */
-export function ChartParseField() {
+export function ChartParseField({
+  polishAvailable,
+}: {
+  polishAvailable: boolean;
+}) {
   const [file, setFile] = useState<File | null>(null);
   const [content, setContent] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ParseResponse | null>(null);
+
+  // 다듬기는 되돌릴 수 있어야 한다. 모델이 말투를 바꾸는 게 마음에 안 들 수 있다.
+  const [polishing, setPolishing] = useState(false);
+  const [polishError, setPolishError] = useState<string | null>(null);
+  const [polishNote, setPolishNote] = useState<string | null>(null);
+  const [beforePolish, setBeforePolish] = useState<string | null>(null);
+
+  function resetPolish() {
+    setPolishError(null);
+    setPolishNote(null);
+    setBeforePolish(null);
+  }
 
   async function parse() {
     if (!file) return;
@@ -35,6 +51,7 @@ export function ChartParseField() {
     setStatus("loading");
     setError(null);
     setResult(null);
+    resetPolish();
 
     try {
       const body = new FormData();
@@ -58,6 +75,50 @@ export function ChartParseField() {
     }
   }
 
+  async function polish() {
+    if (!content.trim()) return;
+
+    setPolishing(true);
+    setPolishError(null);
+    setPolishNote(null);
+
+    try {
+      const res = await fetch("/api/patterns/polish", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ text: content }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setPolishError(
+          typeof data.error === "string" ? data.error : "다듬기에 실패했습니다.",
+        );
+        return;
+      }
+
+      if (data.changed === false) {
+        setPolishNote("이미 다듬어진 상태예요. 바뀐 곳이 없습니다.");
+        return;
+      }
+
+      setBeforePolish(content);
+      setContent(data.text);
+      setPolishNote("AI 가 문장을 다듬었어요. 마음에 안 들면 되돌릴 수 있습니다.");
+    } catch {
+      setPolishError("서버와 통신하지 못했습니다.");
+    } finally {
+      setPolishing(false);
+    }
+  }
+
+  function undoPolish() {
+    if (beforePolish === null) return;
+    setContent(beforePolish);
+    setBeforePolish(null);
+    setPolishNote("원본으로 되돌렸습니다.");
+  }
+
   return (
     <>
       <label className="flex flex-col gap-1">
@@ -72,11 +133,12 @@ export function ChartParseField() {
             setStatus("idle");
             setError(null);
             setResult(null);
+            resetPolish();
           }}
         />
       </label>
 
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
           onClick={parse}
@@ -118,12 +180,50 @@ export function ChartParseField() {
       <textarea
         name="content"
         value={content}
-        onChange={(e) => setContent(e.target.value)}
+        onChange={(e) => {
+          setContent(e.target.value);
+          resetPolish();
+        }}
         placeholder="도안 내용 (예: 1단: 사슬 6, 짧은뜨기 5...)"
         required
         rows={12}
         className="border rounded px-3 py-2 font-mono text-sm"
       />
+
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={polish}
+          disabled={!content.trim() || polishing || !polishAvailable}
+          className="border rounded px-3 py-2 text-sm disabled:opacity-40"
+          title={
+            polishAvailable
+              ? "인식된 문장을 읽기 좋게 다듬습니다. 코 수는 바뀌지 않습니다."
+              : "ANTHROPIC_API_KEY 가 설정되지 않았습니다."
+          }
+        >
+          {polishing ? "다듬는 중…" : "AI로 문장 다듬기"}
+        </button>
+
+        {beforePolish !== null && (
+          <button
+            type="button"
+            onClick={undoPolish}
+            className="text-sm text-gray-500 underline"
+          >
+            되돌리기
+          </button>
+        )}
+
+        {!polishAvailable && (
+          <span className="text-xs text-gray-400">
+            AI 다듬기는 ANTHROPIC_API_KEY 를 설정하면 켜집니다.
+          </span>
+        )}
+      </div>
+
+      {polishError && <p className="text-red-600 text-sm">{polishError}</p>}
+      {polishNote && <p className="text-gray-500 text-sm">{polishNote}</p>}
     </>
   );
 }
