@@ -32,6 +32,8 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# 템플릿은 올려야 한다. 클론한 사람이 무슨 변수가 필요한지 알 방법이 없어진다.
+!.env.local.example
 
 # vercel
 .vercel
@@ -45,3 +47,10 @@ next-env.d.ts
 # database
 /prisma/dev.db
 /prisma/dev.db-journal
+
+# python (crochet_rulepart)
+/.venv/
+__pycache__/
+*.py[cod]
+# 검출 확인용 산출물
+/crochet_rulepart/data/_result.png
