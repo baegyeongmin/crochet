@@ -1,7 +1,10 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { ChartParseField } from "./ChartParseField";
 
+// next.config.ts 의 serverActions.bodySizeLimit 보다 작아야 한다. 크게 잡으면
+// 프레임워크가 먼저 요청을 끊어서 아래 검사가 실행조차 되지 않는다.
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
 export default async function NewPatternPage({
@@ -60,22 +63,7 @@ export default async function NewPatternPage({
           required
           className="border rounded px-3 py-2"
         />
-        <label className="flex flex-col gap-1">
-          <span className="text-sm text-gray-500">이미지 (선택)</span>
-          <input
-            type="file"
-            name="image"
-            accept="image/*"
-            className="border rounded px-3 py-2 text-sm"
-          />
-        </label>
-        <textarea
-          name="content"
-          placeholder="도안 내용 (예: 1단: 사슬 6, 짧은뜨기 5...)"
-          required
-          rows={12}
-          className="border rounded px-3 py-2 font-mono text-sm"
-        />
+        <ChartParseField />
         {errorMessage && <p className="text-red-600 text-sm">{errorMessage}</p>}
         <button
           type="submit"
