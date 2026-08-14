@@ -56,6 +56,7 @@ const html = await (await call("/patterns/new")).text();
 
 check("파일 입력이 있다", html.includes('type="file"') && html.includes('name="image"'));
 check("분석 버튼이 있다", html.includes("이미지에서 도안 읽기"));
+check("AI 다듬기 버튼이 있다", html.includes("AI로 문장 다듬기"));
 check("도안 내용 textarea 가 있다", html.includes('name="content"'));
 check("제목 입력이 있다", html.includes('name="title"'));
 check("저장 버튼이 있다", html.includes("저장"));

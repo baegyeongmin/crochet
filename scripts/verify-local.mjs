@@ -193,6 +193,63 @@ let parsedText = null;
   check("이미지가 아니면 400", res.status === 400, `HTTP ${res.status}`);
 }
 
+// 8b. AI 다듬기. 키가 없으면 501 로 얌전히 물러나야 하고, 있으면 숫자 구조가
+//     보존된 결과가 와야 한다.
+{
+  const noAuth = new Map(jar);
+  jar.clear();
+  const unauth = await call("/api/patterns/polish", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ text: "1단: 사슬 3" }),
+  });
+  check("비로그인 다듬기는 401", unauth.status === 401, `HTTP ${unauth.status}`);
+  jar.clear();
+  for (const [k, v] of noAuth) jar.set(k, v);
+
+  const bad = await call("/api/patterns/polish", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ text: "" }),
+  });
+  check("빈 내용은 400", bad.status === 400, `HTTP ${bad.status}`);
+
+  const long = await call("/api/patterns/polish", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ text: "가".repeat(10_001) }),
+  });
+  check("너무 긴 내용은 413", long.status === 413, `HTTP ${long.status}`);
+
+  const source = parsedText ?? "1단: 사슬 3(=한길긴뜨기 1코), 한길긴뜨기 14, 빼뜨기로 마무리 (15코)";
+  const res = await call("/api/patterns/polish", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ text: source }),
+  });
+  const data = await res.json();
+
+  if (res.status === 501) {
+    check(
+      "AI 다듬기 미설정 시 501 로 물러난다",
+      data.reason === "no-key",
+      JSON.stringify(data.error),
+    );
+    console.log("      (ANTHROPIC_API_KEY 를 넣으면 실제 다듬기까지 점검한다)");
+  } else if (res.ok) {
+    check("AI 다듬기 성공", true, `${data.model} / changed=${data.changed}`);
+    const nums = (s) => (s.match(/\d+/g) ?? []).join(",");
+    check(
+      "다듬은 뒤에도 단 번호와 코 수가 그대로",
+      nums(source) === nums(data.text),
+      `원본 [${nums(source)}] vs 결과 [${nums(data.text)}]`,
+    );
+    console.log(`      다듬은 결과: ${JSON.stringify(data.text)}`);
+  } else {
+    check("AI 다듬기", false, `HTTP ${res.status} ${JSON.stringify(data)}`);
+  }
+}
+
 // 9. 분석 결과로 도안 저장 → 목록/상세 확인
 if (parsedText) {
   const res = await call("/api/patterns", {
