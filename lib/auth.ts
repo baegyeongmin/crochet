@@ -14,9 +14,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: "Password", type: "password" },
       },
       authorize: async (credentials) => {
-        const email = credentials?.email as string | undefined;
+        const rawEmail = credentials?.email as string | undefined;
         const password = credentials?.password as string | undefined;
-        if (!email || !password) return null;
+        if (!rawEmail || !password) return null;
+
+        // lib/signup.ts 가 소문자로 정규화해 저장한다. 여기서도 같이 맞춰야
+        // "Foo@Bar.com" 으로 로그인할 때 조용히 실패하지 않는다.
+        const email = rawEmail.trim().toLowerCase();
 
         const user = await prisma.user.findUnique({ where: { email } });
         if (!user) return null;
